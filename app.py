@@ -22,6 +22,58 @@ TEMPERATURE_LOCATIONS = {
 # Weather API key
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY") #add in our api key
 
+@app.route('/create-account', methods=['POST'])
+def create_account():
+    """
+    Create a new user account.
+
+    Request JSON Body:
+        username (str): The desired username.
+        password (str): The desired password.
+
+    Returns:
+        JSON: A success message if the account is created, or an error message.
+    """
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required'}), 400
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists'}), 400
+
+    new_user = User(username=username)
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({'message': 'Account created successfully'}), 201
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    """
+    Log in a user by validating their password.
+
+    Request JSON Body:
+        username (str): The username.
+        password (str): The password.
+
+    Returns:
+        JSON: A success message if the credentials are valid, or an error message.
+    """
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(password):
+        return jsonify({'message': 'Login successful'}), 200
+    return jsonify({'error': 'Invalid username or password'}), 401
+
+
 def get_locations_by_temperature(temp):
     """
     Determines snack locations based on the temperature range.
