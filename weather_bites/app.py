@@ -20,7 +20,7 @@ TEMPERATURE_LOCATIONS = {
 }
 
 # Weather API key
-WEATHER_API_KEY = os.getenv("WEATHER_API_KEY") #add in our api key
+WEATHER_API_KEY = os.getenv("e466bb4e7cf0fb8cd7b3dcf74a1bea58") #add in our api key
 
 @app.route('/create-account', methods=['POST'])
 def create_account():
@@ -140,3 +140,6 @@ def get_snack_location():
         }), 200
     
     return jsonify({"error": "Could not fetch weather data"}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
