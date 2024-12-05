@@ -169,6 +169,35 @@ def save_snack_location():
     return jsonify({'message': f'Snack location "{location}" saved successfully!'}), 201
 
 #rate snack
+@app.route('/rate-snack-location', methods=['POST'])
+def rate_snack_location():
+    """
+    Rate a saved snack location.
+
+    Request JSON Body:
+        location (str): The name of the snack location.
+        user_id (int): The user's ID.
+        rating (int): The user's rating (1-5).
+
+    Returns:
+        JSON: Success message or error message.
+    """
+    data = request.json
+    location = data.get('location')
+    user_id = data.get('user_id')
+    rating = data.get('rating')
+
+    if not location or not user_id or not rating:
+        return jsonify({'error': 'Location, user ID, and rating are required'}), 400
+
+    snack = SnackLocation.query.filter_by(name=location, user_id=user_id).first()
+    if not snack:
+        return jsonify({'error': 'Snack location not found'}), 404
+
+    snack.rating = rating
+    db.session.commit()
+
+    return jsonify({'message': f'Rated "{location}" with {rating} stars!'}), 200
 
 #write review
 
