@@ -107,12 +107,13 @@ def fetch_weather(city):
     Returns:
         float: The current temperature in Celsius if successful, or None if the API call fails.
     """
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric" #put our api key
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric" 
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
         return data['main']['temp']  # Return the current temperature
     return None
+
 
 # Routes
 
@@ -141,5 +142,36 @@ def get_snack_location():
     
     return jsonify({"error": "Could not fetch weather data"}), 500
 
+#save snack
+@app.route('/save-snack-location', methods=['POST'])
+def save_snack_location():
+    """
+    Save a snack location to the user's favorites.
+
+    Request JSON Body:
+        location (str): The name of the snack location.
+        user_id (int): The user's ID.
+
+    Returns:
+        JSON: Success message or error message.
+    """
+    data = request.json
+    location = data.get('location')
+    user_id = data.get('user_id')
+
+    if not location or not user_id:
+        return jsonify({'error': 'Location and user ID are required'}), 400
+
+    new_snack_location = SnackLocation(name=location, user_id=user_id)
+    db.session.add(new_snack_location)
+    db.session.commit()
+
+    return jsonify({'message': f'Snack location "{location}" saved successfully!'}), 201
+
+#rate snack
+
+#write review
+
+#viewing favorite snack location
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
