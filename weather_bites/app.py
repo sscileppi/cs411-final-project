@@ -169,7 +169,7 @@ def save_snack_location():
     return jsonify({'message': f'Snack location "{location}" saved successfully!'}), 201
 
 #rate snack
-@app.route('/rate-snack-location', methods=['POST'])
+@app.route('/rate-snack-location', methods=['POST']) ##### need to create a database model for SnackLocation ######
 def rate_snack_location():
     """
     Rate a saved snack location.
