@@ -146,68 +146,68 @@ def get_snack_location():
     
     return jsonify({"error": "Could not fetch weather data"}), 500
 
-@app.route('/favorite-snack-location', methods=['POST'])
-def favorite_snack_location():
+@app.route('/favorite-snack', methods=['POST'])
+def favorite_snack():
     """
-    Allows a user to mark a snack location as a favorite.
+    Allows a user to mark a snack as a favorite.
     
     Request JSON Body:
         user_id (int): The user ID of the customer.
-        snack_location_id (int): The ID of the snack location.
+        id (int): The ID of the snack.
     
     Returns:
-        JSON: A success message if the snack location is favorited, or an error message.
+        JSON: A success message if the snack is favorited, or an error message.
     """
     data = request.json
     user_id = data.get('user_id')
-    snack_location_id = data.get('snack_location_id')
+    snack_id = data.get('id')
 
     # Validate input
-    if not user_id or not snack_location_id:
-        return jsonify({"error": "user_id and snack_location_id are required"}), 400
+    if not user_id or not snack_id:
+        return jsonify({"error": "user_id and snack_id are required"}), 400
     
-    # Fetch snack location from the database
-    snack_location = SnackLocation.query.get(snack_location_id)
-    if not snack_location:
+    # Fetch snack from the database
+    snack = Review.query.get(id)
+    if not snack:
         return jsonify({"error": "Snack location not found"}), 404
 
-    # Mark the snack location as a favorite (this example assumes a favorite flag on the SnackLocation)
-    snack_location.favorite = True
+    # Mark the snack  as a favorite (this example assumes a favorite flag on the Review)
+    snack.favorite = True
     db.session.commit()
 
-    return jsonify({"message": "Snack location marked as favorite"}), 200
+    return jsonify({"message": "Snack marked as favorite"}), 200
 
-@app.route('/rate-snack-location', methods=['POST'])
-def rate_snack_location():
+@app.route('/rate-snack', methods=['POST'])
+def rate_snack():
     """
-    Allows a user to rate a snack location.
+    Allows a user to rate a snack.
 
     Request JSON Body:
-        snack_location_id (int): The ID of the snack location to rate.
+        snack_id (int): The ID of the snack to rate.
         rating (int): The rating value (1-5).
 
     Returns:
         JSON: A success message if the rating is saved successfully, or an error message.
     """
     data = request.json
-    snack_location_id = data.get('snack_location_id')
+    snack_id = data.get('id')
     rating = data.get('rating')
 
     # Validate input
-    if not snack_location_id or not rating:
-        return jsonify({"error": "snack_location_id and rating are required"}), 400
+    if not snack_id or not rating:
+        return jsonify({"error": "snack_id and rating are required"}), 400
     
     # Check if rating is valid (e.g., 1-5)
     if rating < 1 or rating > 5:
         return jsonify({"error": "Rating must be between 1 and 5"}), 400
 
-    # Get the snack location from the database
-    snack_location = db.session.query(SnackLocation).filter_by(id=snack_location_id).first()
-    if not snack_location:
-        return jsonify({"error": "Snack location not found"}), 404
+    # Get the snack  from the database
+    snack= db.session.query(Review).filter_by(id=snack_id).first()
+    if not snack:
+        return jsonify({"error": "Snack not found"}), 404
 
     # Update the rating
-    snack_location.rating = rating
+    snack.rating = rating
     db.session.commit()
 
     return jsonify({"message": "Rating added successfully"}), 201
@@ -215,49 +215,49 @@ def rate_snack_location():
 @app.route('/write-review', methods=['POST'])
 def write_review():
     """
-    Allows a user to write a review for a snack location.
+    Allows a user to write a review for a snack.
 
     Request JSON Body:
-        snack_location_id (int): The ID of the snack location to review.
+        snack_id (int): The ID of the snack to review.
         review (str): The review text.
 
     Returns:
         JSON: A success message if the review is saved successfully, or an error message.
     """
     data = request.json
-    snack_location_id = data.get('snack_location_id')
+    snack_id = data.get('id')
     review = data.get('review')
 
     # Validate input
-    if not snack_location_id or not review:
-        return jsonify({"error": "snack_location_id and review are required"}), 400
+    if not snack_id or not review:
+        return jsonify({"error": "snack_id and review are required"}), 400
 
     # Get the snack location from the database
-    snack_location = db.session.query(SnackLocation).filter_by(id=snack_location_id).first()
-    if not snack_location:
-        return jsonify({"error": "Snack location not found"}), 404
+    snack = db.session.query(Review).filter_by(id=snack_id).first()
+    if not snack:
+        return jsonify({"error": "Snack not found"}), 404
 
     # Update the review
-    snack_location.review = review
+    snack.review = review
     db.session.commit()
 
     return jsonify({"message": "Review added successfully"}), 201
 
 
-@app.route('/get-favorite-snack-locations', methods=['GET'])
-def get_favorite_snack_locations():
+@app.route('/get-favorite-snacks', methods=['GET'])
+def get_favorite_snacks():
     """
-    Retrieves all snack locations marked as favorites.
+    Retrieves all snacks marked as favorites.
 
     Returns:
-        JSON: A list of favorite snack locations.
+        JSON: A list of favorite snacks.
     """
-    favorite_locations = db.session.query(SnackLocation).filter_by(favorite=True).all()
+    favorite_snacks = db.session.query(Review).filter_by(favorite=True).all()
 
     # Convert the result to a list of dictionaries
-    favorite_locations_dict = [location.to_dict() for location in favorite_locations]
+    favorite_snacks_dict = [location.to_dict() for location in favorite_snacks]
 
-    return jsonify(favorite_locations_dict), 200
+    return jsonify(favorite_snacks_dict), 200
 
 
 
