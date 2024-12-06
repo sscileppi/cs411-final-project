@@ -109,12 +109,15 @@ def fetch_weather(city):
     Returns:
         float: The current temperature in Celsius if successful, or None if the API call fails.
     """
+
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=imperial" #put our api key
+
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
         return data['main']['temp']  # Return the current temperature
     return None
+
 
 # Routes
 
