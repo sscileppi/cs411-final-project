@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 from dotenv import load_dotenv
 import os
-from weather_bites.weather_bites.models.snack_location import SnackLocation
+from weather_bites.weather_bites.models.review import Review
 from weather_bites.weather_bites.models.db import db
 
 # Load environment variables
@@ -22,7 +22,7 @@ TEMPERATURE_LOCATIONS = {
 }
 
 # Weather API key
-WEATHER_API_KEY = os.getenv("e466bb4e7cf0fb8cd7b3dcf74a1bea58") #add in our api key
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 
 @app.route('/create-account', methods=['POST'])
 def create_account():
