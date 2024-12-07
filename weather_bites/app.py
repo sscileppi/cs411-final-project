@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import requests
+import random
 from dotenv import load_dotenv
 import os
 from weather_bites.weather_bites.models.review import Review
@@ -13,12 +14,28 @@ app = Flask(__name__)
 
 # Predefined temperature ranges and snack locations
 TEMPERATURE_LOCATIONS = {
-    "<30": ["1369 Coffee House (hot chocolate)", "Soup Shack"],
+    "<30": ["1369 Coffee House", "Soup Shack"],
     "31-45": ["1369 Coffee House", "Tatte"],
     "46-60": ["Blank Street Coffee", "Pavement Coffeehouse"],
     "61-75": ["Boba Tea and Snow Ice House", "Tiger Sugar"],
     "76-85": ["Levain", "Fomu"],
     ">85": ["JP Licks", "Kyo Matcha"]
+}
+TEMPERATURE_SNACKS = {
+    "<30": ["hot chocolate", "soup"],
+    "31-45": ["chocolate croissant", "hot coffee"],
+    "46-60": ["almond croissant", "everything cream cheese bagel"],
+    "61-75": ["brown sugar bubble tea", "strawberry milk tea"],
+    "76-85": ["chocolate-chip cookie", "ice cream cookie sandwich"],
+    ">85": ["Cookies 'n' Cream Sundae", "Strawberry Matcha Latte"]
+}
+TEMPERATURE_SEASONAL= {
+    "<30": ["peppermint hot chocolate"],
+    "31-45": ["peppermint tea"],
+    "46-60": ["apple cider donuts"],
+    "61-75": ["acai bowl"],
+    "76-85": ["lemonade"],
+    ">85": ["frozen yogurt"]
 }
 
 # Weather API key
@@ -99,6 +116,52 @@ def get_locations_by_temperature(temp):
     else:
         return TEMPERATURE_LOCATIONS[">85"]
     
+def get_snacks_by_temperature(temp):
+    """
+    Determines snack  based on the temperature range.
+
+    Args:
+        temp (float): The current temperature in Fahrenheit.
+
+    Returns:
+        list: A list of snack location names matching the temperature range.
+    """
+    if temp < 30:
+        return TEMPERATURE_SNACKS["<30"]
+    elif 31 <= temp <= 45:
+        return TEMPERATURE_SNACKS["31-45"]
+    elif 46 <= temp <= 60:
+        return TEMPERATURE_SNACKS["46-60"]
+    elif 61 <= temp <= 75:
+        return TEMPERATURE_SNACKS["61-75"]
+    elif 76 <= temp <= 85:
+        return TEMPERATURE_SNACKS["76-85"]
+    else:
+        return TEMPERATURE_SNACKS[">85"]
+    
+def get_seasonal_snacks_by_temperature(temp):
+    """
+    Determines snack  based on the temperature range.
+
+    Args:
+        temp (float): The current temperature in Fahrenheit.
+
+    Returns:
+        list: A list of snack location names matching the temperature range.
+    """
+    if temp < 30:
+        return TEMPERATURE_SEASONAL["<30"]
+    elif 31 <= temp <= 45:
+        return TEMPERATURE_SEASONAL["31-45"]
+    elif 46 <= temp <= 60:
+        return TEMPERATURE_SEASONAL["46-60"]
+    elif 61 <= temp <= 75:
+        return TEMPERATURE_SEASONAL["61-75"]
+    elif 76 <= temp <= 85:
+        return TEMPERATURE_SEASONAL["76-85"]
+    else:
+        return TEMPERATURE_SEASONAL[">85"]
+    
 def fetch_weather(city):
     """
     Fetches the current temperature for a given city using the OpenWeatherMap API.
@@ -146,118 +209,113 @@ def get_snack_location():
     
     return jsonify({"error": "Could not fetch weather data"}), 500
 
-@app.route('/favorite-snack-location', methods=['POST'])
-def favorite_snack_location():
+@app.route('/get-snack-recommendation', methods=['GET'])
+def get_snack_recommendation():
     """
-    Allows a user to mark a snack_location as a favorite.
-    
-    Request JSON Body:
-        user_id (int): The user ID of the customer.
-        id (int): The ID of the snack.
-    
-    Returns:
-        JSON: A success message if the snack is favorited, or an error message.
-    """
-    data = request.json
-    user_id = data.get('user_id')
-    snack_location_id = data.get('id')
+    Recommends a snack based on the current weather.
 
-    # Validate input
-    if not user_id or not snack_location_id:
-        return jsonify({"error": "user_id and snack_id are required"}), 400
-    
-    # Fetch snack from the database
-    snack = Review.query.filter_by(id=snack_location_id).first()
-    if not snack:
-        return jsonify({"error": "Snack location not found"}), 404
-
-    # Mark the snack  as a favorite (this example assumes a favorite flag on the Review)
-    snack.favorite = True
-    db.session.commit()
-
-    return jsonify({"message": "Snack marked as favorite"}), 200
-
-@app.route('/rate-snack_location', methods=['POST'])
-def rate_snack_location():
-    """
-    Allows a user to rate a snack_location.
-
-    Request JSON Body:
-        snack_id (int): The ID of the snack to rate.
-        rating (int): The rating value (1-5).
+    Query Parameters:
+        city (str): The name of the city.
 
     Returns:
-        JSON: A success message if the rating is saved successfully, or an error message.
+        JSON: A dictionary containing the temperature and recommended snack.
     """
-    data = request.json
-    snack_location_id = data.get('id')
-    rating = data.get('rating')
-
-    # Validate input
-    if not snack_location_id or not rating:
-        return jsonify({"error": "snack_id and rating are required"}), 400
+    city = request.args.get('city')
+    if not city:
+        return jsonify({"error": "City is required"}), 400
     
-    # Check if rating is valid (e.g., 1-5)
-    if rating < 1 or rating > 5:
-        return jsonify({"error": "Rating must be between 1 and 5"}), 400
+    temperature = fetch_weather(city)
+    if temperature is not None:
+        snacks = get_snacks_by_temperature(temperature)
+        return jsonify({
+            "temperature": temperature,
+            "snacks": snacks
+        }), 200
+    
+    return jsonify({"error": "Could not fetch weather data"}), 500
 
-    # Get the snack location from the database
-    snack_location= db.session.query(Review).filter_by(id=snack_location_id).first()
-    if not snack_location:
-        return jsonify({"error": "Snack location not found"}), 404
-
-    # Update the rating
-    snack_location.rating = rating
-    db.session.commit()
-
-    return jsonify({"message": "Rating added successfully"}), 201
-
-@app.route('/write-review', methods=['POST'])
-def write_review():
+@app.route('/view-current-weather', methods=['GET'])
+def view_current_weather():
     """
-    Allows a user to write a review for a snack location.
+    Displays the current weather for a given city.
 
-    Request JSON Body:
-        snack_location_id (int): The ID of the snack to review.
-        review (str): The review text.
+    Query Parameters:
+        city (str): The name of the city.
 
     Returns:
-        JSON: A success message if the review is saved successfully, or an error message.
+        JSON: The current temperature and weather condition.
     """
-    data = request.json
-    snack_location_id = data.get('id')
-    review = data.get('review')
+    city = request.args.get('city')
+    if not city:
+        return jsonify({"error": "City is required"}), 400
+    
+    temperature = fetch_weather(city)
+    if temperature is not None:
+        return jsonify({
+            "city": city,
+            "temperature": temperature
+        }), 200
+    
+    return jsonify({"error": "Could not fetch weather data"}), 500
 
-    # Validate input
-    if not snack_location_id or not review:
-        return jsonify({"error": "snack_id and review are required"}), 400
-
-    # Get the snack location from the database
-    snack_location = db.session.query(Review).filter_by(id=snack_location_id).first()
-    if not snack_location:
-        return jsonify({"error": "Snack not found"}), 404
-
-    # Update the review
-    snack_location.review = review
-    db.session.commit()
-
-    return jsonify({"message": "Review added successfully"}), 201
-
-
-@app.route('/get-favorite-snack_locations', methods=['GET'])
-def get_favorite_snack_locations():
+@app.route('/get-snack-recommendation', methods=['GET'])
+def get_seasonal_snack_recommendation():
     """
-    Retrieves all snack locations marked as favorites.
+    Recommends a seasonal snack based on the current weather.
+
+    Query Parameters:
+        city (str): The name of the city.
 
     Returns:
-        JSON: A list of favorite snack locations.
+        JSON: A dictionary containing the temperature and recommended snack.
     """
-    favorite_snack_locations = db.session.query(Review).filter_by(favorite=True).all()
+    city = request.args.get('city')
+    if not city:
+        return jsonify({"error": "City is required"}), 400
+    
+    temperature = fetch_weather(city)
+    if temperature is not None:
+        seasonal_snacks = get_seasonal_snacks_by_temperature(temperature)
+        return jsonify({
+            "temperature": temperature,
+            "snacks": seasonal_snacks
+        }), 200
+    
+    return jsonify({"error": "Could not fetch weather data"}), 500
 
-    # Convert the result to a list of dictionaries
-    favorite_snack_locations_dict = [location.to_dict() for location in favorite_snack_locations]
 
-    return jsonify(favorite_snack_locations_dict), 200
+@app.route('/get-snack-pairing', methods=['GET'])
+def get_snack_pairing():
+    """
+    Recommends a snack pairing based on the current weather.
+
+    Query Parameters:
+        city (str): The name of the city.
+
+    Returns:
+        JSON: A dictionary containing the temperature, recommended snack, and drink.
+    """
+    city = request.args.get('city')
+    if not city:
+        return jsonify({"error": "City is required"}), 400
+    
+    temperature = fetch_weather(city)
+    if temperature is not None:
+        # Fetching both snack and seasonal snack pairings
+        snacks = get_snacks_by_temperature(temperature)
+        seasonal_snacks = get_seasonal_snacks_by_temperature(temperature)
+
+        # Assuming pairing snack from both regular and seasonal snacks
+        snack = random.choice(snacks)  # Choose a random snack
+        seasonal_snack = seasonal_snacks[0]  # Choose the first seasonal snack 
+
+        return jsonify({
+            "temperature": temperature,
+            "snack": snack,
+            "drink": seasonal_snack
+        }), 200
+    
+    return jsonify({"error": "Could not fetch weather data"}), 500
 
 
 
