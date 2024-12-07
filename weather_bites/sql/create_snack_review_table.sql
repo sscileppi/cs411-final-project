@@ -6,5 +6,6 @@ CREATE TABLE ReviewsTable (
     rating INTEGER DEFAULT 0 CHECK (rating >= 1 AND rating <= 5),
     favorite BOOLEAN DEFAULT FALSE,
     review TEXT DEFAULT NULL
+    deleted BOOLEAN DEFAULT FALSE
 );
 
