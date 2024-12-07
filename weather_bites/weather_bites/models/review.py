@@ -1,180 +1,202 @@
-from dataclasses import dataclass
 import logging
-import os
-import sqlite3
-from typing import Any
-
-from weather_bites.utils.sql_utils import get_db_connection
+from typing import List, Optional
+from flask_sqlalchemy import SQLAlchemy
 from weather_bites.utils.logger import configure_logger
 
+# Initialize the database instance
+db = SQLAlchemy()
 
+# Configure the logger
 logger = logging.getLogger(__name__)
 configure_logger(logger)
 
 
-@dataclass
-class Review:
-    id: int
-    name: str #what was purchased
-    location: str #where it was purchased
-    rating: int #rating from 1-5
-    favorite: bool #whether it's a favorite or not
-    review: str #review of restaurant/purchase
+class Review(db.Model):
 
-    def __post_init__(self):
-        if self.rating < 1 or self.rating > 5:
-            raise ValueError("Rating must be from 1-5")
-        if self.favorite != True and self.favorite != False:
-            raise ValueError("Review must be either added to favorites (True) or not added (False).")
+    """
+    SQLAlchemy model for the Reviews table.
+
+    Attributes:
+        id (int): The primary key identifier for the review.
+        name (str): The name of the item being reviewed.
+        location (str): The location where the item was purchased.
+        rating (int): The rating of the item or service (1-5).
+        favorite (bool): Whether the item is a favorite.
+        review (str): The review text provided by the user.
+        deleted (bool): Indicates if the review is soft-deleted.
+    """
+     
+    __tablename__ = 'ReviewsTable'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False, unique=True)
+    location = db.Column(db.String, nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    favorite = db.Column(db.Boolean, default=False)
+    review = db.Column(db.Text, nullable=True)
+    deleted = db.Column(db.Boolean, default=False)
+
+    def __init__(self, name, location, rating, favorite, review):
+
+        """
+        Initializes a Review instance.
+
+        Args:
+            name (str): The name of the item being reviewed.
+            location (str): The location where the item was purchased.
+            rating (int): The rating of the item or service (1-5).
+            favorite (bool): Whether the item or service is a favorite.
+            review (str): The review text provided by the user.
+
+        Raises:
+            ValueError: If the rating is not between 1 and 5.
+        """
+
+        if not (1 <= rating <= 5):
+            raise ValueError("Rating must be between 1 and 5.")
+        self.name = name
+        self.location = location
+        self.rating = rating
+        self.favorite = favorite
+        self.review = review
+
+    def mark_deleted(self):
+        """
+        Marks the review as soft-deleted by setting the 'deleted' attribute to True.
+        """
+
+        self.deleted = True
+
+#helper functions
         
 def create_review(name: str, location: str, rating: int, favorite: bool, review:str) -> None:
-    if not isinstance(rating, int):
-        raise ValueError(f"Invalid rating: {rating}. Rating must be an integer from 1-5.")
+
+    """
+    Creates a new review and saves it to the database.
+
+    Args:
+        name (str): The name of the item being reviewed.
+        location (str): The location where the item was purchased.
+        rating (int): The rating of the item or service (1-5).
+        favorite (bool): Whether the item or service is a favorite.
+        review (str): The review text provided by the user.
+
+    Raises:
+        ValueError: If the rating is invalid or the location is not in the allowed list.
+        Exception: If there is a database error while saving the review.
+    """
+
+    valid_locations = [
+        "1369 Coffee House (hot chocolate)", "Soup Shack", "1369 Coffee House",
+        "Tatte", "Blank Street Coffee", "Pavement Coffeehouse",
+        "Boba Tea and Snow Ice House", "Tiger Sugar", "Levain",
+        "Fomu", "JP Licks", "Kyo Matcha"
+    ]
+
     if rating < 1 or rating > 5:
-        raise ValueError(f"Invalid number: {rating}. Rating must be from 1-5.")
-    if location not in ["1369 Coffee House (hot chocolate)", "Soup Shack", "1369 Coffee House", "Tatte", "Blank Street Coffee", "Pavement Coffeehouse", "Boba Tea and Snow Ice House", "Tiger Sugar", "Levain", "Fomu", "JP Licks", "Kyo Matcha"]:
-        raise ValueError(f"Invalid location: {location}. Must be a restaurant from the following: 1369 Coffee House (hot chocolate), Soup Shack, 1369 Coffee House, Tatte, Blank Street Coffee, Pavement Coffeehouse, Boba Tea and Snow Ice House, Tiger Sugar, Levain, Fomu, JP Licks, Kyo Matcha")
+        raise ValueError(f"Invalid rating: {rating}. Rating must be between 1 and 5.")
+    if location not in valid_locations:
+        raise ValueError(f"Invalid location: {location}. Must be one of {', '.join(valid_locations)}.")
+
+    review_instance = Review(name=name, location=location, rating=rating, favorite=favorite, review=review)
 
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO ReviewsTable (name, location, rating, favorite, review) VALUES (?, ?, ?, ?, ?)
-            """, (name, location, rating, favorite, review))
-            conn.commit()
-
-            logger.info("Review successfully added to the database: %s", name)
-    
-    except sqlite3.IntegrityError:
-        logger.error("Duplicate snack name: %s", name)
-        raise ValueError(f"Snack with name '{name}' already exists")
-
-    except sqlite3.Error as e:
-        logger.error("Database error: %s", str(e))
-        raise e
+        db.session.add(review_instance)
+        db.session.commit()
+        logger.info("Review successfully added to the database: %s", name)
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error while adding review: %s", str(e))
+        raise
 
 def clear_reviews() -> None:
     """
-    Recreates the reviews table, effectively deleting all reviews.
+    Deletes all reviews from the database.
 
     Raises:
-        sqlite3.Error: If any database error occurs.
+        Exception: If there is a database error while deleting reviews.
     """
     try:
-        with open(os.getenv("SQL_CREATE_TABLE_PATH", "/app/sql/create_snack_review_table.sql"), "r") as fh:
-            create_table_script = fh.read()
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.executescript(create_table_script)
-            conn.commit()
-
-            logger.info("Reviews cleared successfully.")
-
-    except sqlite3.Error as e:
-        logger.error("Database error while clearing reviews: %s", str(e))
-        raise e
+        Review.query.delete()
+        db.session.commit()
+        logger.info("All reviews cleared successfully.")
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error while clearing reviews: %s", str(e))
+        raise
     
 def delete_review(id: int) -> None:
+
+    """
+    Soft-deletes a review by marking it as deleted.
+
+    Args:
+        id (int): The ID of the review to delete.
+
+    Raises:
+        ValueError: If the review does not exist or has already been deleted.
+        Exception: If there is a database error while marking the review as deleted.
+    """
+
+    review = Review.query.get(id)
+    if not review:
+        logger.info("Review with ID %s not found.", id)
+        raise ValueError(f"Review with ID {id} not found.")
+    if review.deleted:
+        logger.info("Review with ID %s is already deleted.", id)
+        raise ValueError(f"Review with ID {id} has already been deleted.")
+
+    review.mark_deleted()
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT deleted FROM ReviewsTable WHERE id = ?", (id,))
-            try:
-                deleted = cursor.fetchone()[0]
-                if deleted:
-                    logger.info("Review with ID %s has already been deleted", id)
-                    raise ValueError(f"Review with ID {id} has been deleted")
-            except TypeError:
-                logger.info("Review with ID %s not found", id)
-                raise ValueError(f"Review with ID {id} not found")
-
-            cursor.execute("UPDATE ReviewsTable SET deleted = TRUE WHERE id = ?", (id,))
-            conn.commit()
-
-            logger.info("Review with ID %s marked as deleted.", id)
-
-    except sqlite3.Error as e:
-        logger.error("Database error: %s", str(e))
-        raise e
+        db.session.commit()
+        logger.info("Review with ID %s marked as deleted.", id)
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error while deleting review: %s", str(e))
+        raise
     
-def get_favorites() -> list[Review]:
+def get_favorites() -> List[Review]:
     """
     Retrieves all reviews marked as favorites from the database.
 
     Returns:
-        list[Review]: A list of Review objects that are marked as favorites.
+        List[Review]: A list of Review objects that are marked as favorites.
 
     Raises:
-        sqlite3.Error: If any database error occurs.
+        Exception: If there is a database error while retrieving favorites.
     """
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, name, location, rating, favorite, review
-                FROM ReviewsTable
-                WHERE favorite = TRUE
-            """)
-            rows = cursor.fetchall()
-
-            favorites = [
-                Review(
-                    id=row[0],
-                    name=row[1],
-                    location=row[2],
-                    rating=row[3],
-                    favorite=bool(row[4]),
-                    review=row[5]
-                )
-                for row in rows
-            ]
-
-            logger.info("Retrieved %d favorite reviews.", len(favorites))
-            return favorites
-        
-    except sqlite3.Error as e:
-        logger.error("Database error while retrieving favorites: %s", str(e))
-        raise e
+        favorites = Review.query.filter_by(favorite=True, deleted=False).all()
+        logger.info("Retrieved %d favorite reviews.", len(favorites))
+        return favorites
+    except Exception as e:
+        logger.error("Error while retrieving favorites: %s", str(e))
+        raise
     
 def get_review_by_id(id: int) -> Review:
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name, location, rating, favorite, review, deleted FROM ReviewsTable WHERE id = ?", (id,))
-            row = cursor.fetchone()
 
-            if row:
-                if row[6]:
-                    logger.info("Review with ID %s has been deleted", id)
-                    raise ValueError(f"Review with ID {id} has been deleted")
-                return Review(id=row[0], name=row[1], location=row[2], rating=row[3], favorite=row[4], review=row[5])
-            else:
-                logger.info("Review with ID %s not found", id)
-                raise ValueError(f"Review with ID {id} not found")
+    """
+    Retrieves a review by its ID.
 
-    except sqlite3.Error as e:
-        logger.error("Database error: %s", str(e))
-        raise e
+    Args:
+        id (int): The ID of the review to retrieve.
+
+    Returns:
+        Review: The Review object matching the provided ID.
+
+    Raises:
+        ValueError: If the review does not exist or has been deleted.
+    """
+
+    review = Review.query.get(id)
+    if not review or review.deleted:
+        logger.info("Review with ID %s not found or deleted.", id)
+        raise ValueError(f"Review with ID {id} not found or has been deleted.")
+    if review.deleted:
+        logger.info("Review with ID %s has been soft-deleted.", id)
+        raise ValueError(f"Review with ID {id} has been deleted.")
+    return review
     
-def get_review_by_name(review_name: str) -> Review:
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name, location, rating, favorite, review, deleted FROM ReviewsTable WHERE review = ?", (review_name,))
-            row = cursor.fetchone()
-
-            if row:
-                if row[6]:
-                    logger.info("Meal with name %s has been deleted", review_name)
-                    raise ValueError(f"Review with name {review_name} has been deleted")
-                return Review(id=row[0], name=row[1], location=row[2], rating=row[3], favorite=row[4], review = row[5])
-            else:
-                logger.info("Review with name %s not found", review_name)
-                raise ValueError(f"Review with name {review_name} not found")
-
-    except sqlite3.Error as e:
-        logger.error("Database error: %s", str(e))
-        raise e
     
 def update_review(id: int, new_review: str) -> None:
     """
@@ -185,22 +207,18 @@ def update_review(id: int, new_review: str) -> None:
         new_review (str): The new review text.
 
     Raises:
-        sqlite3.Error: If any database error occurs.
-        ValueError: If the review ID does not exist.
+        ValueError: If the review does not exist or has been deleted.
+        Exception: If there is a database error while updating the review.
     """
+    review = get_review_by_id(id)
+    review.review = new_review
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE ReviewsTable SET review = ? WHERE id = ?", (new_review, id))
-            if cursor.rowcount == 0:
-                raise ValueError(f"Review with ID {id} not found.")
-            conn.commit()
-
-            logger.info("Updated review text for ID %d.", id)
-
-    except sqlite3.Error as e:
-        logger.error("Database error while updating review: %s", str(e))
-        raise e
+        db.session.commit()
+        logger.info("Updated review text for ID %d.", id)
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error while updating review: %s", str(e))
+        raise
     
 def update_rating(id: int, new_rating: int) -> None:
     """
@@ -211,25 +229,24 @@ def update_rating(id: int, new_rating: int) -> None:
         new_rating (int): The new rating (1-5).
 
     Raises:
-        sqlite3.Error: If any database error occurs.
         ValueError: If the rating is not between 1 and 5 or the review ID does not exist.
+        Exception: If a database error occurs.
     """
     if not (1 <= new_rating <= 5):
         raise ValueError("Rating must be an integer between 1 and 5.")
 
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE ReviewsTable SET rating = ? WHERE id = ?", (new_rating, id))
-            if cursor.rowcount == 0:
-                raise ValueError(f"Review with ID {id} not found.")
-            conn.commit()
-
-            logger.info("Updated rating for ID %d to %d.", id, new_rating)
-
-    except sqlite3.Error as e:
-        logger.error("Database error while updating rating: %s", str(e))
-        raise e
+        review = get_review_by_id(id)
+        review.rating = new_rating
+        db.session.commit()
+        logger.info("Updated rating for ID %d to %d.", id, new_rating)
+    except ValueError as ve:
+        logger.error("Invalid ID provided: %s", str(ve))
+        raise ve
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error while updating rating: %s", str(e))
+        raise
 
 
 def update_favorite(id: int, is_favorite: bool) -> None:
@@ -241,27 +258,14 @@ def update_favorite(id: int, is_favorite: bool) -> None:
         is_favorite (bool): The new favorite status (True or False).
 
     Raises:
-        sqlite3.Error: If any database error occurs.
-        ValueError: If the review ID does not exist.
+        Exception: If any database error occurs.
     """
-    if not isinstance(is_favorite, bool):
-        raise ValueError("Favorite status must be a boolean value (True or False).")
-
+    review = get_review_by_id(id)
+    review.favorite = is_favorite
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("UPDATE ReviewsTable SET favorite = ? WHERE id = ?", (is_favorite, id))
-            if cursor.rowcount == 0:
-                raise ValueError(f"Review with ID {id} not found.")
-            conn.commit()
-
-            logger.info("Updated favorite status for ID %d to %s.", id, is_favorite)
-
-    except sqlite3.Error as e:
-        logger.error("Database error while updating favorite status: %s", str(e))
-        raise e
-
-
-    
-
-
+        db.session.commit()
+        logger.info("Updated favorite status for ID %d to %s.", id, is_favorite)
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error while updating favorite status: %s", str(e))
+        raise

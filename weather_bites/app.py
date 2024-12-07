@@ -146,10 +146,10 @@ def get_snack_location():
     
     return jsonify({"error": "Could not fetch weather data"}), 500
 
-@app.route('/favorite-snack', methods=['POST'])
-def favorite_snack():
+@app.route('/favorite-snack-location', methods=['POST'])
+def favorite_snack_location():
     """
-    Allows a user to mark a snack as a favorite.
+    Allows a user to mark a snack_location as a favorite.
     
     Request JSON Body:
         user_id (int): The user ID of the customer.
@@ -160,14 +160,14 @@ def favorite_snack():
     """
     data = request.json
     user_id = data.get('user_id')
-    snack_id = data.get('id')
+    snack_location_id = data.get('id')
 
     # Validate input
-    if not user_id or not snack_id:
+    if not user_id or not snack_location_id:
         return jsonify({"error": "user_id and snack_id are required"}), 400
     
     # Fetch snack from the database
-    snack = Review.query.get(id)
+    snack = Review.query.filter_by(id=snack_location_id).first()
     if not snack:
         return jsonify({"error": "Snack location not found"}), 404
 
@@ -177,10 +177,10 @@ def favorite_snack():
 
     return jsonify({"message": "Snack marked as favorite"}), 200
 
-@app.route('/rate-snack', methods=['POST'])
-def rate_snack():
+@app.route('/rate-snack_location', methods=['POST'])
+def rate_snack_location():
     """
-    Allows a user to rate a snack.
+    Allows a user to rate a snack_location.
 
     Request JSON Body:
         snack_id (int): The ID of the snack to rate.
@@ -190,24 +190,24 @@ def rate_snack():
         JSON: A success message if the rating is saved successfully, or an error message.
     """
     data = request.json
-    snack_id = data.get('id')
+    snack_location_id = data.get('id')
     rating = data.get('rating')
 
     # Validate input
-    if not snack_id or not rating:
+    if not snack_location_id or not rating:
         return jsonify({"error": "snack_id and rating are required"}), 400
     
     # Check if rating is valid (e.g., 1-5)
     if rating < 1 or rating > 5:
         return jsonify({"error": "Rating must be between 1 and 5"}), 400
 
-    # Get the snack  from the database
-    snack= db.session.query(Review).filter_by(id=snack_id).first()
-    if not snack:
-        return jsonify({"error": "Snack not found"}), 404
+    # Get the snack location from the database
+    snack_location= db.session.query(Review).filter_by(id=snack_location_id).first()
+    if not snack_location:
+        return jsonify({"error": "Snack location not found"}), 404
 
     # Update the rating
-    snack.rating = rating
+    snack_location.rating = rating
     db.session.commit()
 
     return jsonify({"message": "Rating added successfully"}), 201
@@ -215,49 +215,49 @@ def rate_snack():
 @app.route('/write-review', methods=['POST'])
 def write_review():
     """
-    Allows a user to write a review for a snack.
+    Allows a user to write a review for a snack location.
 
     Request JSON Body:
-        snack_id (int): The ID of the snack to review.
+        snack_location_id (int): The ID of the snack to review.
         review (str): The review text.
 
     Returns:
         JSON: A success message if the review is saved successfully, or an error message.
     """
     data = request.json
-    snack_id = data.get('id')
+    snack_location_id = data.get('id')
     review = data.get('review')
 
     # Validate input
-    if not snack_id or not review:
+    if not snack_location_id or not review:
         return jsonify({"error": "snack_id and review are required"}), 400
 
     # Get the snack location from the database
-    snack = db.session.query(Review).filter_by(id=snack_id).first()
-    if not snack:
+    snack_location = db.session.query(Review).filter_by(id=snack_location_id).first()
+    if not snack_location:
         return jsonify({"error": "Snack not found"}), 404
 
     # Update the review
-    snack.review = review
+    snack_location.review = review
     db.session.commit()
 
     return jsonify({"message": "Review added successfully"}), 201
 
 
-@app.route('/get-favorite-snacks', methods=['GET'])
-def get_favorite_snacks():
+@app.route('/get-favorite-snack_locations', methods=['GET'])
+def get_favorite_snack_locations():
     """
-    Retrieves all snacks marked as favorites.
+    Retrieves all snack locations marked as favorites.
 
     Returns:
-        JSON: A list of favorite snacks.
+        JSON: A list of favorite snack locations.
     """
-    favorite_snacks = db.session.query(Review).filter_by(favorite=True).all()
+    favorite_snack_locations = db.session.query(Review).filter_by(favorite=True).all()
 
     # Convert the result to a list of dictionaries
-    favorite_snacks_dict = [location.to_dict() for location in favorite_snacks]
+    favorite_snack_locations_dict = [location.to_dict() for location in favorite_snack_locations]
 
-    return jsonify(favorite_snacks_dict), 200
+    return jsonify(favorite_snack_locations_dict), 200
 
 
 
