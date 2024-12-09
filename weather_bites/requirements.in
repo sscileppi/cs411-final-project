@@ -1,3 +1,6 @@
 Flask
 python-dotenv
 requests
+werkzeug
+dotenv
+flask_sqlalchemy

@@ -5,12 +5,48 @@ from dotenv import load_dotenv
 import os
 from weather_bites.weather_bites.models.review import Review
 from weather_bites.weather_bites.models.db import db
+import logging
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
 
 # Flask app setup
 app = Flask(__name__)
+
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///weather_bites.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the database
+db.init_app(app)
+
+# Create database tables (for development only; use migrations in production)
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
+# Logging setup
+logging.basicConfig(level=logging.INFO)
+
+# Database models for Users and Favorites
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Favorite(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    city = db.Column(db.String(80), nullable=False)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Predefined temperature ranges and snack locations
 TEMPERATURE_LOCATIONS = {
@@ -41,6 +77,14 @@ TEMPERATURE_SEASONAL= {
 # Weather API key
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check route to ensure the app is running.
+    """
+    logging.info("Health check called")
+    return jsonify({"status": "healthy"}), 200
+
 @app.route('/create-account', methods=['POST'])
 def create_account():
     """
@@ -68,6 +112,7 @@ def create_account():
     db.session.add(new_user)
     db.session.commit()
 
+    logging.info(f"User {username} created successfully")
     return jsonify({'message': 'Account created successfully'}), 201
 
 
@@ -89,9 +134,70 @@ def login():
 
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
+        logging.info(f"User {username} logged in successfully")
         return jsonify({'message': 'Login successful'}), 200
+    logging.warning(f"Failed login attempt for username: {username}")
     return jsonify({'error': 'Invalid username or password'}), 401
 
+@app.route('/update-password', methods=['PUT'])
+def update_password():
+    """
+    Update a user's password.
+    """
+    data = request.json
+    username = data.get('username')
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(old_password):
+        user.set_password(new_password)
+        db.session.commit()
+        logging.info(f"Password updated for user {username}")
+        return jsonify({'message': 'Password updated successfully'}), 200
+
+    logging.warning(f"Failed password update for username: {username}")
+    return jsonify({'error': 'Invalid username or password'}), 401
+
+@app.route('/add-favorite', methods=['POST'])
+def add_favorite():
+    """
+    Add a favorite city for a user.
+    """
+    data = request.json
+    username = data.get('username')
+    city = data.get('city')
+
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        logging.warning(f"User {username} not found when adding favorite")
+        return jsonify({'error': 'User not found'}), 404
+
+    favorite = Favorite(user_id=user.id, city=city)
+    db.session.add(favorite)
+    db.session.commit()
+
+    logging.info(f"Favorite city {city} added for user {username}")
+    return jsonify({'message': f'City {city} added to favorites'}), 201
+
+
+@app.route('/list-favorites', methods=['GET'])
+def list_favorites():
+    """
+    List all favorite cities for a user.
+    """
+    username = request.args.get('username')
+    user = User.query.filter_by(username=username).first()
+
+    if not user:
+        logging.warning(f"User {username} not found when listing favorites")
+        return jsonify({'error': 'User not found'}), 404
+
+    favorites = Favorite.query.filter_by(user_id=user.id).all()
+    favorite_cities = [f.city for f in favorites]
+
+    logging.info(f"Favorites retrieved for user {username}")
+    return jsonify({'favorites': favorite_cities}), 200
 
 def get_locations_by_temperature(temp):
     """
