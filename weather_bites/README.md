@@ -128,14 +128,34 @@ To run the tests:
 ---
 # File Structure
    ```
-   .
-   ├── app/                  # Flask application code
-   ├── tests/                # Unit tests
-   ├── scripts/              # Scripts for database setup
+      .
+   ├── weather_bites/        # Main project directory
+   │   ├── models/           # Database and review models
+   │   │   ├── db.py         # Database connection code
+   │   │   ├── review.py     # Review model logic
+   │   ├── tests/            # Unit tests for the application
+   │   │   ├── test_review.py # Tests for review functionality
+   │   ├── utils/            # Utility scripts
+   │       ├── __init__.py   # Init file for utils
+   │       ├── logger.py     # Logging utility
+   │       ├── random_utils.py # General utilities
+   │       ├── sql_utils.py  # SQL-related utilities
+   │   ├── __init__.py       # Init file for main package
+   ├── db/                   # Database-related files
+   │   ├── weather_bites.db  # SQLite database file
+   │   ├── sql/              # SQL setup scripts
+   │       ├── create_db.sh  # Script to create the database
+   │       ├── create_snack_review.sql # SQL schema for snack reviews
    ├── Dockerfile            # Docker configuration
-   ├── requirements.txt      # Python dependencies
-   ├── .env.template         # Template for environment variables
+   ├── entrypoint.sh         # Docker entrypoint script
    ├── README.md             # Project documentation
+   ├── requirements.in       # Base dependencies
+   ├── requirements.lock     # Locked dependencies for reproducibility
+   ├── requirements.txt      # Python dependencies
+   ├── rundocker.sh          # Script to run Docker container
+   ├── setup_venv.sh         # Script to set up virtual environment
+   ├── tests_dockerfile      # Dockerfile for testing environment
+   ├── .env                  # Environment variables file
    ```
 ---
 # Contributors
