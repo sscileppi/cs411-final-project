@@ -65,6 +65,14 @@ TEMPERATURE_SEASONAL= {
 # Weather API key
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """
+    Health check route to ensure the app is running.
+    """
+    logging.info("Health check called")
+    return jsonify({"status": "healthy"}), 200
+
 @app.route('/create-account', methods=['POST'])
 def create_account():
     """
