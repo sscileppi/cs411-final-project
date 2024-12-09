@@ -6,6 +6,7 @@ import os
 from weather_bites.weather_bites.models.review import Review
 from weather_bites.weather_bites.models.db import db
 import logging
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Load environment variables
 load_dotenv()
@@ -15,6 +16,18 @@ app = Flask(__name__)
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
+
+# Database models for Users and Favorites
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 # Predefined temperature ranges and snack locations
 TEMPERATURE_LOCATIONS = {
@@ -72,6 +85,7 @@ def create_account():
     db.session.add(new_user)
     db.session.commit()
 
+    logging.info(f"User {username} created successfully")
     return jsonify({'message': 'Account created successfully'}), 201
 
 
@@ -93,7 +107,9 @@ def login():
 
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
+        logging.info(f"User {username} logged in successfully")
         return jsonify({'message': 'Login successful'}), 200
+    logging.warning(f"Failed login attempt for username: {username}")
     return jsonify({'error': 'Invalid username or password'}), 401
 
 
