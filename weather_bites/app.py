@@ -5,12 +5,16 @@ from dotenv import load_dotenv
 import os
 from weather_bites.weather_bites.models.review import Review
 from weather_bites.weather_bites.models.db import db
+import logging
 
 # Load environment variables
 load_dotenv()
 
 # Flask app setup
 app = Flask(__name__)
+
+# Logging setup
+logging.basicConfig(level=logging.INFO)
 
 # Predefined temperature ranges and snack locations
 TEMPERATURE_LOCATIONS = {
