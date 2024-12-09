@@ -2,9 +2,7 @@ import logging
 from typing import List, Optional
 from flask_sqlalchemy import SQLAlchemy
 from weather_bites.utils.logger import configure_logger
-
-# Initialize the database instance
-db = SQLAlchemy()
+from weather_bites.models.db import db
 
 # Configure the logger
 logger = logging.getLogger(__name__)
