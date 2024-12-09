@@ -18,3 +18,15 @@ class User(db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+# Favorite model
+class Favorite(db.Model):
+    __tablename__ = 'favorites'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    city = db.Column(db.String(100), nullable=False)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Favorite {self.city} for User ID {self.user_id}>'
