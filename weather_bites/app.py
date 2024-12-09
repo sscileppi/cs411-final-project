@@ -3,8 +3,8 @@ import requests
 import random
 from dotenv import load_dotenv
 import os
-from weather_bites.weather_bites.models.review import Review
-from weather_bites.weather_bites.models.db import db
+from weather_bites.models.review import Review
+from weather_bites.models.db import db
 import logging
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
