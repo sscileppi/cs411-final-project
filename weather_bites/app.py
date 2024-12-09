@@ -22,10 +22,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize the database
 db.init_app(app)
 
-# Create database tables (for development only; use migrations in production)
-@app.before_first_request
-def create_tables():
-    db.create_all()
+# Initialize the database tables
+initialized = False
+
+@app.before_request
+def initialize_database():
+    global initialized
+    if not initialized:
+        with app.app_context():
+            db.create_all()
+        initialized = True
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
