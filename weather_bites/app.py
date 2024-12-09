@@ -119,6 +119,26 @@ def login():
     logging.warning(f"Failed login attempt for username: {username}")
     return jsonify({'error': 'Invalid username or password'}), 401
 
+@app.route('/update-password', methods=['PUT'])
+def update_password():
+    """
+    Update a user's password.
+    """
+    data = request.json
+    username = data.get('username')
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(old_password):
+        user.set_password(new_password)
+        db.session.commit()
+        logging.info(f"Password updated for user {username}")
+        return jsonify({'message': 'Password updated successfully'}), 200
+
+    logging.warning(f"Failed password update for username: {username}")
+    return jsonify({'error': 'Invalid username or password'}), 401
+
 @app.route('/add-favorite', methods=['POST'])
 def add_favorite():
     """
