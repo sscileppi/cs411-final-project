@@ -295,6 +295,12 @@ def fetch_weather(city):
 
 
 # Routes
+@app.route('/')
+def home():
+    """
+    Default route for the root path.
+    """
+    return jsonify({"message": "Welcome to the Weather Bites API! Refer to the documentation for available routes."})
 
 @app.route('/get-snack-location', methods=['GET'])
 def get_snack_location():
