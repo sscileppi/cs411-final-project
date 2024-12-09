@@ -4,10 +4,9 @@ import random
 from dotenv import load_dotenv
 import os
 from weather_bites.models.review import Review
-from weather_bites.models.db import db
+from weather_bites.models.db import db, User, Favorite
 import logging
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -35,24 +34,6 @@ def initialize_database():
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
-
-# Database models for Users and Favorites
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(200), nullable=False)
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-class Favorite(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    city = db.Column(db.String(80), nullable=False)
-    added_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Predefined temperature ranges and snack locations
 TEMPERATURE_LOCATIONS = {
