@@ -15,6 +15,18 @@ load_dotenv()
 # Flask app setup
 app = Flask(__name__)
 
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///weather_bites.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the database
+db.init_app(app)
+
+# Create database tables (for development only; use migrations in production)
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 
