@@ -16,7 +16,7 @@ class ReviewModelTestCase(unittest.TestCase):
         app.config['TESTING'] = True
         self.app = app.test_client()
         with app.app_context():
-            db.init_app(app)
+            
             db.create_all()
 
     def tearDown(self):
